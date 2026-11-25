@@ -13,6 +13,7 @@ export interface CompanySettings {
   website: string;
   logo_path: string | null;
   signature_path: string | null;
+  stamp_path: string | null;
   signer_name: string;
   signer_title: string;
   bank_name: string;
@@ -88,6 +89,7 @@ export const EMPTY_COMPANY: CompanySettings = {
   website: "",
   logo_path: null,
   signature_path: null,
+  stamp_path: null,
   signer_name: "",
   signer_title: "กรรมการผู้มีอำนาจลงนาม",
   bank_name: "",

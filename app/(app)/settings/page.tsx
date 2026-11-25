@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { EMPTY_COMPANY, type CompanySettings } from "@/lib/types";
 import McpTokens from "@/components/McpTokens";
 
-type ImgKey = "logo_path" | "signature_path" | "qr_path";
+type ImgKey = "logo_path" | "signature_path" | "stamp_path" | "qr_path";
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [previews, setPreviews] = useState<Record<ImgKey, string | null>>({
     logo_path: null,
     signature_path: null,
+    stamp_path: null,
     qr_path: null,
   });
   const [loading, setLoading] = useState(true);
@@ -35,6 +36,7 @@ export default function SettingsPage() {
         setPreviews({
           logo_path: await sign(c.logo_path),
           signature_path: await sign(c.signature_path),
+          stamp_path: await sign(c.stamp_path),
           qr_path: await sign(c.qr_path),
         });
       }
@@ -147,8 +149,8 @@ export default function SettingsPage() {
         {text("bank_account_no", "เลขที่บัญชี")}
       </section>
 
-      <section className="card grid gap-6 md:grid-cols-3">
-        <h2 className="font-semibold md:col-span-3">รูปภาพ (PNG/JPG/WebP ไม่เกิน 2MB)</h2>
+      <section className="card grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <h2 className="font-semibold md:col-span-2 lg:col-span-4">รูปภาพ (PNG/JPG/WebP ไม่เกิน 2MB)</h2>
         <ImageBox
           title="โลโก้บริษัท"
           src={previews.logo_path}
@@ -163,6 +165,14 @@ export default function SettingsPage() {
           busy={uploading === "signature_path"}
           onPick={(f) => upload("signature_path", f)}
           onRemove={() => removeImg("signature_path")}
+        />
+        <ImageBox
+          title="ตราประทับบริษัท"
+          hint="PNG พื้นหลังโปร่งใส จะแสดงข้างลายเซ็น"
+          src={previews.stamp_path}
+          busy={uploading === "stamp_path"}
+          onPick={(f) => upload("stamp_path", f)}
+          onRemove={() => removeImg("stamp_path")}
         />
         <ImageBox
           title="QR รับชำระเงิน (PromptPay)"

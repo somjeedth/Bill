@@ -7,6 +7,7 @@ import { addDaysISO, bahtText } from "@/lib/format";
 import type { CompanySettings, DocItem, DocStatus, DocType, DocumentRow } from "@/lib/types";
 import type { DocDraft } from "@/components/DocumentForm";
 import { ToolError, type ToolDef } from "./protocol";
+import { pdfUrls, signPdfToken } from "@/lib/pdfToken";
 
 export interface McpCtx {
   db: AdminClient;
@@ -328,6 +329,7 @@ export const TOOLS: ToolDef<McpCtx>[] = [
         bank: { bank_name: c.bank_name, branch: c.bank_branch, account_name: c.bank_account_name, account_no: c.bank_account_no },
         has_logo: !!c.logo_path,
         has_signature: !!c.signature_path,
+        has_stamp: !!c.stamp_path,
         has_qr: !!c.qr_path,
         default_vat_rate: Number(c.default_vat_rate ?? 7),
       };
@@ -699,6 +701,44 @@ export const TOOLS: ToolDef<McpCtx>[] = [
           .single()
       ) as DocumentRow;
       return { updated: true, ...docSummary(updated, ctx.baseUrl) };
+    },
+  },
+  {
+    name: "get_document_pdf",
+    title: "ดาวน์โหลด PDF เอกสาร",
+    description:
+      "สร้างลิงก์ดาวน์โหลดไฟล์ PDF ของเอกสาร (หน้าตาเดียวกับที่พิมพ์จากเว็บ มีโลโก้ ลายเซ็น ตราประทับ QR) ลิงก์เปิดได้โดยไม่ต้องล็อกอิน ส่งต่อให้ลูกค้าได้ และหมดอายุตามที่กำหนด",
+    inputSchema: {
+      type: "object",
+      properties: {
+        document: DOC_REF,
+        with_copy: { type: "boolean", description: "พิมพ์ต้นฉบับ + สำเนา (2 หน้า) ค่าเริ่มต้น false" },
+        expires_in_days: { type: "number", minimum: 1, maximum: 90, description: "อายุลิงก์ (วัน) ค่าเริ่มต้น 7" },
+      },
+      required: ["document"],
+    },
+    annotations: { readOnlyHint: true },
+    run: async (a, ctx) => {
+      const { doc } = await findDoc(ctx, a.document);
+      const days = Math.min(90, Math.max(1, Number(a.expires_in_days) || 7));
+      const signed = signPdfToken(doc.id, days * 86400);
+      if (!signed) throw new ToolError("ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY หรือ PDF_LINK_SECRET บนเซิร์ฟเวอร์");
+      const urls = pdfUrls(ctx.baseUrl, doc.id, signed.token, a.with_copy === true);
+      const filename = `${doc.doc_no}.pdf`;
+      return {
+        doc_no: doc.doc_no,
+        type_th: DOC_TYPES[doc.doc_type].th,
+        customer_name: doc.customer_name,
+        net_total: Number(doc.net_total),
+        filename,
+        pdf_download_url: urls.download,
+        pdf_view_url: urls.view,
+        expires_at: signed.expiresAt.toISOString(),
+        note: "ส่งลิงก์ pdf_download_url ให้ผู้ใช้กดดาวน์โหลด (ครั้งแรกอาจใช้เวลา 5-10 วินาทีในการสร้างไฟล์)",
+        _resource_links: [
+          { uri: urls.download, name: filename, title: `${DOC_TYPES[doc.doc_type].th} ${doc.doc_no}`, mimeType: "application/pdf" },
+        ],
+      };
     },
   },
 ];

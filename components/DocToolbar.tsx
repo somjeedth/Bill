@@ -13,16 +13,21 @@ export default function DocToolbar({
   status,
   withCopy,
   issueDate,
+  pdfDownloadUrl,
+  pdfShareUrl,
 }: {
   id: string;
   type: DocType;
   status: DocStatus;
   withCopy: boolean;
   issueDate: string;
+  pdfDownloadUrl?: string;
+  pdfShareUrl?: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   async function changeStatus(s: DocStatus) {
     setBusy(true);
@@ -50,7 +55,23 @@ export default function DocToolbar({
   return (
     <div className="no-print mb-4 flex flex-wrap items-center gap-2">
       <Link href={`/documents?type=${type}`} className="btn-ghost">‹ กลับ</Link>
-      <button className="btn-primary" onClick={() => window.print()}>พิมพ์ / บันทึก PDF</button>
+      <button className="btn-primary" onClick={() => window.print()}>พิมพ์</button>
+      {pdfDownloadUrl && (
+        <a href={pdfDownloadUrl} className="btn-ghost">ดาวน์โหลด PDF</a>
+      )}
+      {pdfShareUrl && (
+        <button
+          className="btn-ghost"
+          title="ลิงก์เปิด PDF ได้โดยไม่ต้องล็อกอิน อายุ 7 วัน"
+          onClick={async () => {
+            await navigator.clipboard.writeText(pdfShareUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+        >
+          {copied ? "คัดลอกแล้ว ✓" : "คัดลอกลิงก์ PDF"}
+        </button>
+      )}
       <Link href={`/documents/${id}${withCopy ? "" : "?copy=1"}`} className="btn-ghost">
         {withCopy ? "พิมพ์เฉพาะต้นฉบับ" : "พิมพ์ต้นฉบับ + สำเนา"}
       </Link>

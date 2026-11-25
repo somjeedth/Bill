@@ -43,9 +43,17 @@ export async function POST(req: NextRequest) {
 
   const userId = await userFromToken(db, req.headers.get("authorization"));
   if (!userId) {
+    // รูปแบบ OAuth (RFC 6750) — MCP client บางตัวอ่าน body นี้ตอนได้ 401
     return NextResponse.json(
-      { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Unauthorized: token ไม่ถูกต้องหรือถูกยกเลิกแล้ว" } },
-      { status: 401, headers: { ...CORS, "WWW-Authenticate": 'Bearer realm="mcp"' } }
+      {
+        error: "invalid_token",
+        error_description:
+          "ต้องส่ง header Authorization: Bearer <token> (สร้าง token ได้ที่หน้า ข้อมูลบริษัท > เชื่อมต่อ AI)",
+      },
+      {
+        status: 401,
+        headers: { ...CORS, "WWW-Authenticate": 'Bearer realm="mcp", error="invalid_token"' },
+      }
     );
   }
 

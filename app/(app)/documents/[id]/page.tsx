@@ -6,6 +6,8 @@ import { DOC_TYPES, STATUS_COLOR, statusLabel } from "@/lib/docTypes";
 import { itemsFromRows } from "@/lib/draft";
 import { money, thDate } from "@/lib/format";
 import { createClient, signedAssetUrl } from "@/lib/supabase/server";
+import { pdfUrls, signPdfToken } from "@/lib/pdfToken";
+import { headers } from "next/headers";
 import { EMPTY_COMPANY, type CompanySettings, type DocumentRow } from "@/lib/types";
 
 export default async function DocumentView({
@@ -31,9 +33,10 @@ export default async function DocumentView({
   if (!doc) notFound();
 
   const company = { ...EMPTY_COMPANY, ...(companyRow ?? {}) } as CompanySettings;
-  const [logo, signature, qr] = await Promise.all([
+  const [logo, signature, stamp, qr] = await Promise.all([
     signedAssetUrl(supabase, company.logo_path),
     signedAssetUrl(supabase, company.signature_path),
+    signedAssetUrl(supabase, company.stamp_path),
     signedAssetUrl(supabase, company.qr_path),
   ]);
 
@@ -49,13 +52,29 @@ export default async function DocumentView({
 
   const d = doc as DocumentRow;
   const items = itemsFromRows(doc.document_items ?? []);
-  const images = { logo, signature, qr };
+  const images = { logo, signature, stamp, qr };
   const withCopy = copy === "1";
   const kids = (children ?? []) as DocumentRow[];
 
+  // ลิงก์ PDF (อายุ 7 วัน) สำหรับดาวน์โหลด/ส่งให้ลูกค้า
+  const h = await headers();
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+  const signed = signPdfToken(d.id);
+  const pdf = signed ? pdfUrls(origin, d.id, signed.token, withCopy) : null;
+
   return (
     <div>
-      <DocToolbar id={d.id} type={d.doc_type} status={d.status} withCopy={withCopy} issueDate={d.issue_date} />
+      <DocToolbar
+        id={d.id}
+        type={d.doc_type}
+        status={d.status}
+        withCopy={withCopy}
+        issueDate={d.issue_date}
+        pdfDownloadUrl={pdf?.download}
+        pdfShareUrl={pdf?.view}
+      />
 
       <div className="no-print mb-4 flex flex-wrap items-center gap-3 text-sm">
         <span className={`badge ${DOC_TYPES[d.doc_type].color}`}>{DOC_TYPES[d.doc_type].th}</span>

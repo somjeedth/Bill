@@ -38,6 +38,7 @@ export const INSTRUCTIONS = `ระบบบัญชีสำหรับออ
 - ยอดคำนวณ: subtotal → ส่วนลด (percent หรือ amount) → VAT คิดจากยอดหลังส่วนลด → หัก ณ ที่จ่าย (wht_rate) คิดจากยอดก่อน VAT → net_total คือยอดที่ลูกค้าต้องจ่าย
 - อ้างถึงเอกสารด้วยเลขที่ (เช่น QT202611-001) หรือ id ก็ได้
 - ลำดับงานปกติ: ใบเสนอราคา → convert_document เป็น invoice หรือ installment → convert_document เป็น receipt เมื่อได้รับเงิน
+- ผู้ใช้ขอไฟล์ PDF/ส่งเอกสารให้ลูกค้า → get_document_pdf แล้วให้ลิงก์ดาวน์โหลด
 - ก่อนสร้าง/แก้ไขเอกสาร ควรสรุปรายการและยอดให้ผู้ใช้ยืนยันก่อน`;
 
 export async function handleRpc<Ctx>(
@@ -86,10 +87,20 @@ export async function handleRpc<Ctx>(
       if (!tool) return fail(-32602, `Unknown tool: ${name}`);
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       try {
-        const data = await tool.run(args, ctx);
+        let data = await tool.run(args, ctx);
+        // tool คืน _resource_links ได้ → แนบเป็น resource_link (เช่น ไฟล์ PDF)
+        let links: Record<string, unknown>[] = [];
+        if (data && typeof data === "object" && "_resource_links" in (data as object)) {
+          const { _resource_links, ...rest } = data as { _resource_links: Record<string, unknown>[] };
+          links = _resource_links ?? [];
+          data = rest;
+        }
         const structured = data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : { result: data };
         return ok({
-          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          content: [
+            { type: "text", text: JSON.stringify(data, null, 2) },
+            ...links.map((l) => ({ type: "resource_link", ...l })),
+          ],
           structuredContent: structured,
           isError: false,
         });

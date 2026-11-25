@@ -6,6 +6,7 @@ import type { CompanySettings, DocItem, DocumentRow, DocType } from "@/lib/types
 export interface PaperImages {
   logo: string | null;
   signature: string | null;
+  stamp?: string | null;
   qr: string | null;
 }
 
@@ -237,8 +238,17 @@ export default function DocumentPaper({
           <div className="text-slate-400">วันที่ ____/____/______</div>
         </div>
         <div>
-          <div className="flex h-16 items-end justify-center">
-            {images.signature && <img src={images.signature} alt="signature" className="max-h-16 object-contain" />}
+          <div className="relative flex h-16 items-end justify-center">
+            {images.signature && (
+              <img src={images.signature} alt="signature" className="relative z-10 max-h-16 max-w-[60%] object-contain" />
+            )}
+            {images.stamp && (
+              <img
+                src={images.stamp}
+                alt="stamp"
+                className="absolute right-0 -bottom-7 h-[26mm] w-[26mm] -rotate-6 object-contain opacity-90 mix-blend-multiply"
+              />
+            )}
           </div>
           <div className="mx-8 border-t border-slate-300 pt-1 font-medium">
             {company.signer_name ? company.signer_name : "ผู้มีอำนาจลงนาม"}

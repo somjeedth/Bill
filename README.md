@@ -85,6 +85,7 @@ proxy.ts                 รีเฟรช session / กันหน้าท�
 | `get_dashboard` | ยอดวางบิล/รับชำระรายเดือน ยอดรอจ่าย เกินกำหนด |
 | `list_documents` | ค้นหาเอกสาร (ประเภท สถานะ เดือน คำค้น) |
 | `get_document` | รายละเอียดเอกสาร + รายการ + ยอด + ลิงก์พิมพ์ |
+| `get_document_pdf` | ลิงก์ดาวน์โหลด PDF (ไม่ต้องล็อกอิน, หมดอายุตามกำหนด) |
 | `create_document` | สร้างใบเสนอราคา/วางบิล/แบ่งจ่าย/ใบเสร็จ |
 | `update_document` | แก้รายการย่อย ส่วนลด VAT หัก ณ ที่จ่าย หมายเหตุ |
 | `convert_document` | ออกเอกสารต่อ (QT → IV → IN → RE) |
@@ -135,3 +136,11 @@ grok mcp add --transport http thai-billing https://<โดเมนของค�
 ```
 
 ทดสอบว่า endpoint ทำงาน: เปิด `https://<โดเมนของคุณ>/api/mcp` ในเบราว์เซอร์ จะเห็นรายชื่อ tools
+
+## PDF จากฝั่ง server
+
+- `GET /api/pdf/<id>?t=<token>[&download=1][&copy=1]` สร้าง PDF ด้วย Chromium (`@sparticuz/chromium` + `puppeteer-core`) จากหน้า `/print/<id>` หน้าตาจะเหมือนกับที่สั่งพิมพ์จากเว็บ
+- token เป็น HMAC ที่มีวันหมดอายุ ใช้ `PDF_LINK_SECRET` ถ้าไม่ได้ตั้ง จะใช้ `SUPABASE_SERVICE_ROLE_KEY` แทน
+- ในหน้าเอกสารมีปุ่ม **ดาวน์โหลด PDF** และ **คัดลอกลิงก์ PDF** (ลิงก์อายุ 7 วัน ส่งให้ลูกค้าได้)
+- ถ้ารัน `npm run dev` บน Mac ให้ตั้ง `CHROME_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`
+- Vercel ต้องปิด Deployment Protection (Vercel Authentication) ไม่อย่างนั้น Chromium จะเปิดหน้า `/print` ไม่ได้
