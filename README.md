@@ -66,3 +66,72 @@ lib/                     calc (ยอดรวม), format (เงิน วั�
 supabase/migrations/     SQL schema + RLS + storage
 proxy.ts                 รีเฟรช session / กันหน้าที่ต้องล็อกอิน
 ```
+
+## เชื่อมต่อ AI ผ่าน MCP (เช่น Grok)
+
+แอปมี MCP server แบบ Streamable HTTP อยู่ที่ `https://<โดเมนของคุณ>/api/mcp`
+
+### ตั้งค่าครั้งแรก
+
+1. รัน `supabase/migrations/0002_mcp_tokens.sql` ใน Supabase SQL Editor
+2. ใน Vercel > Settings > Environment Variables ให้เพิ่ม `SUPABASE_SERVICE_ROLE_KEY` (Supabase > Project Settings > API Keys > `service_role` / secret) แล้ว Redeploy
+   > key ตัวนี้ข้าม RLS ได้ ห้ามตั้งชื่อขึ้นต้นด้วย `NEXT_PUBLIC_` และห้าม commit ลง git เด็ดขาด
+3. ในเว็บ ไปที่หน้า **ข้อมูลบริษัท > เชื่อมต่อ AI (MCP)** กด **สร้าง token** แล้วคัดลอกเก็บไว้ (ระบบแสดงให้ดูครั้งเดียว)
+
+### Tools
+
+| Tool | ใช้ทำอะไร |
+|---|---|
+| `get_dashboard` | ยอดวางบิล/รับชำระรายเดือน ยอดรอจ่าย เกินกำหนด |
+| `list_documents` | ค้นหาเอกสาร (ประเภท สถานะ เดือน คำค้น) |
+| `get_document` | รายละเอียดเอกสาร + รายการ + ยอด + ลิงก์พิมพ์ |
+| `create_document` | สร้างใบเสนอราคา/วางบิล/แบ่งจ่าย/ใบเสร็จ |
+| `update_document` | แก้รายการย่อย ส่วนลด VAT หัก ณ ที่จ่าย หมายเหตุ |
+| `convert_document` | ออกเอกสารต่อ (QT → IV → IN → RE) |
+| `set_document_status` | เปลี่ยนสถานะ (ชำระแล้ว ยกเลิก ฯลฯ) |
+| `list_customers` / `create_customer` | ลูกค้า |
+| `get_company_profile` | ข้อมูลบริษัท |
+
+### Grok (xAI SDK, Python)
+
+```python
+from xai_sdk import Client
+from xai_sdk.chat import user
+from xai_sdk.tools import mcp
+
+client = Client(api_key=os.environ["XAI_API_KEY"])
+chat = client.chat.create(
+    model="grok-4.3",
+    tools=[mcp(
+        server_url="https://<โดเมนของคุณ>/api/mcp",
+        server_label="thai_billing",
+        authorization=os.environ["BILL_MCP_TOKEN"],
+    )],
+)
+chat.append(user("เดือนนี้มียอดรอจ่ายเท่าไหร่ ใครเกินกำหนดบ้าง"))
+print(chat.sample().content)
+```
+
+### Grok (Responses API / HTTP)
+
+```json
+{
+  "model": "grok-4.3",
+  "input": "ออกใบเสนอราคาให้บริษัท ABC ค่าออกแบบเว็บ 50,000 บาท หัก ณ ที่จ่าย 3%",
+  "tools": [{
+    "type": "mcp",
+    "server_label": "thai_billing",
+    "server_url": "https://<โดเมนของคุณ>/api/mcp",
+    "authorization": "<token>"
+  }]
+}
+```
+
+### Grok Build CLI / MCP client อื่น
+
+```bash
+grok mcp add --transport http thai-billing https://<โดเมนของคุณ>/api/mcp \
+  --header "Authorization: Bearer <token>"
+```
+
+ทดสอบว่า endpoint ทำงาน: เปิด `https://<โดเมนของคุณ>/api/mcp` ในเบราว์เซอร์ จะเห็นรายชื่อ tools

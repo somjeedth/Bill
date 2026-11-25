@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { EMPTY_COMPANY, type CompanySettings } from "@/lib/types";
+import McpTokens from "@/components/McpTokens";
 
 type ImgKey = "logo_path" | "signature_path" | "qr_path";
 
@@ -101,6 +102,7 @@ export default function SettingsPage() {
   );
 
   return (
+    <div className="space-y-6">
     <form onSubmit={save} className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">ข้อมูลบริษัท</h1>
@@ -171,6 +173,8 @@ export default function SettingsPage() {
         />
       </section>
     </form>
+    <McpTokens />
+    </div>
   );
 }
 
